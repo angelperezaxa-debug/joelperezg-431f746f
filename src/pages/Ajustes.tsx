@@ -397,7 +397,35 @@ function VoiceSection({
 }) {
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   useEffect(() => {
-    import("@/lib/speech").then((m) => m.listVoices().then(setVoices)).catch(() => {});
+    let cancelled = false;
+    const refresh = () => {
+      import("@/lib/speech")
+        .then((m) => {
+          m.resetVoiceCache?.();
+          return m.listVoices();
+        })
+        .then((list) => { if (!cancelled) setVoices(list); })
+        .catch(() => {});
+    };
+    refresh();
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      const synth = window.speechSynthesis;
+      synth.addEventListener?.("voiceschanged", refresh);
+      // Polling de seguretat: alguns navegadors no disparen l'event.
+      const poll = window.setInterval(() => {
+        if (synth.getVoices().length > 0) {
+          refresh();
+          window.clearInterval(poll);
+        }
+      }, 300);
+      window.setTimeout(() => window.clearInterval(poll), 5000);
+      return () => {
+        cancelled = true;
+        synth.removeEventListener?.("voiceschanged", refresh);
+        window.clearInterval(poll);
+      };
+    }
+    return () => { cancelled = true; };
   }, []);
 
   const preview = () => {
