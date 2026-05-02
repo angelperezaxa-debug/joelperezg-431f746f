@@ -10,7 +10,9 @@ Drawer.displayName = "Drawer";
 
 const DrawerTrigger = DrawerPrimitive.Trigger;
 
-const DrawerPortal = DrawerPrimitive.Portal;
+const DrawerPortal = DrawerPrimitive.Portal as React.FC<
+  React.ComponentProps<typeof DrawerPrimitive.Portal> & { children?: React.ReactNode }
+>;
 
 const DrawerClose = DrawerPrimitive.Close;
 
