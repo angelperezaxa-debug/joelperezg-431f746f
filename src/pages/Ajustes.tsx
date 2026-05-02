@@ -396,10 +396,9 @@ function VoiceSection({
   onChange: (patch: { voiceURI?: string | null; voiceRate?: number; voicePitch?: number }) => void;
 }) {
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
-  useState(() => {
+  useEffect(() => {
     import("@/lib/speech").then((m) => m.listVoices().then(setVoices)).catch(() => {});
-    return undefined;
-  });
+  }, []);
 
   const preview = () => {
     import("@/lib/speech").then((m) => {
