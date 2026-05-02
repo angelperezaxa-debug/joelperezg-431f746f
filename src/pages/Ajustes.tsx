@@ -412,7 +412,7 @@ function VoiceSection({
           m.resetVoiceCache?.();
           return m.listVoices();
         })
-        .then((list) => { if (!cancelled) setVoices(list); })
+        .then((list) => { if (!cancelled) { setVoices(list); refreshActive(); } })
         .catch(() => {});
     };
     refresh();
