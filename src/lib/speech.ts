@@ -293,47 +293,75 @@ function profileFor(what: string, baseText: string): SpeechProfile {
  * Locuta el text donat amb molt d'ímpetu, com una exclamació.
  */
 export function speak(text: string) {
-  speakWithProfile({ text, rate: 1.1, pitch: 0.85, volume: 1.0 });
+  enqueue({ text, rate: 1.1, pitch: 0.85, volume: 1.0 });
 }
 
-function speakWithProfile(p: SpeechProfile) {
-  try {
-    if (isMuted) return;
-    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
-    const synth = window.speechSynthesis;
-    const utter = new SpeechSynthesisUtterance(p.text);
-    utter.rate = p.rate;
-    utter.pitch = p.pitch;
-    utter.volume = p.volume;
+// Cola de locución: encadena utterances para que no se solapen.
+const speechQueue: SpeechProfile[] = [];
+let speaking = false;
 
-    const voice = pickVoice();
-    if (voice) {
-      // Camí ràpid: veus ja carregades (cas habitual gràcies a la
-      // precàrrega d'`ensureVoicesReady`). Locució immediata.
-      utter.voice = voice;
-      utter.lang = voice.lang;
-      synth.cancel();
-      synth.speak(utter);
-      return;
-    }
+function enqueue(p: SpeechProfile) {
+  if (isMuted) return;
+  if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+  speechQueue.push(p);
+  pump();
+}
 
-    // Fallback: encara no estan disponibles. Esperem la promesa de
-    // veus (que també fa polling) en lloc d'un setTimeout fix.
-    void ensureVoicesReady().then(() => {
-      if (isMuted) return;
-      cachedVoice = null;
-      const v = pickVoice();
-      if (v) {
-        utter.voice = v;
-        utter.lang = v.lang;
+function pump() {
+  if (speaking) return;
+  const next = speechQueue.shift();
+  if (!next) return;
+  speaking = true;
+  void speakNow(next).finally(() => {
+    speaking = false;
+    pump();
+  });
+}
+
+function speakNow(p: SpeechProfile): Promise<void> {
+  return new Promise((resolve) => {
+    try {
+      if (isMuted) { resolve(); return; }
+      if (typeof window === "undefined" || !("speechSynthesis" in window)) { resolve(); return; }
+      const synth = window.speechSynthesis;
+      const utter = new SpeechSynthesisUtterance(p.text);
+      utter.rate = p.rate;
+      utter.pitch = p.pitch;
+      utter.volume = p.volume;
+      utter.onend = () => resolve();
+      utter.onerror = () => resolve();
+
+      const start = (v: SpeechSynthesisVoice | null) => {
+        if (v) {
+          utter.voice = v;
+          utter.lang = v.lang;
+        } else {
+          utter.lang = "ca-ES";
+        }
+        synth.speak(utter);
+      };
+
+      const voice = pickVoice();
+      if (voice) {
+        start(voice);
       } else {
-        utter.lang = "ca-ES";
+        void ensureVoicesReady().then(() => {
+          cachedVoice = null;
+          start(pickVoice());
+        });
       }
-      synth.cancel();
-      synth.speak(utter);
-    });
-  } catch {
-    // Ignora errors de plataformes sense suport.
+    } catch {
+      resolve();
+    }
+  });
+}
+
+/** Cancel·la la cua i atura la locució actual. */
+export function cancelSpeech() {
+  speechQueue.length = 0;
+  speaking = false;
+  if (typeof window !== "undefined" && "speechSynthesis" in window) {
+    window.speechSynthesis.cancel();
   }
 }
 
@@ -346,9 +374,8 @@ export function speakShout(what: string, labelOverride?: string) {
   const text = labelOverride ?? SHOUT_TEXT[what];
   if (!text) return;
   const profile = profileFor(what, text);
-  // Si hi ha labelOverride, manté el text personalitzat però amb la prosòdia del tipus.
   if (labelOverride) {
     profile.text = `¡${labelOverride.replace(/!+$/g, "").trim()}!`;
   }
-  speakWithProfile(profile);
+  enqueue(profile);
 }
