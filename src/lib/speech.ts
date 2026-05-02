@@ -391,8 +391,8 @@ function speakNow(p: SpeechProfile): Promise<void> {
       if (typeof window === "undefined" || !("speechSynthesis" in window)) { resolve(); return; }
       const synth = window.speechSynthesis;
       const utter = new SpeechSynthesisUtterance(p.text);
-      utter.rate = p.rate;
-      utter.pitch = p.pitch;
+      utter.rate = clamp(p.rate * userRateMul, 0.5, 1.6);
+      utter.pitch = clamp(p.pitch * userPitchMul, 0.3, 1.5);
       utter.volume = p.volume;
       utter.onend = () => resolve();
       utter.onerror = () => resolve();
