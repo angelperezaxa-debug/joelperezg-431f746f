@@ -1,6 +1,8 @@
+import { useEffect } from "react";
 import { ShoutKind } from "@/game/types";
 import { cn } from "@/lib/utils";
 import { TRUC_Z_INDEX } from "@/components/truc/layers";
+import { speakShout } from "@/lib/speech";
 
 const LABEL: Record<ShoutKind, string> = {
   envit: "Envit!",
