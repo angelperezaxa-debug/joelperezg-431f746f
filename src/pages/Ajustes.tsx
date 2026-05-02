@@ -19,7 +19,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useT } from "@/i18n/useT";
 import { FlagCircle } from "@/components/FlagCircle";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "@/lib/router-shim";
 import { requestAccountDeletion, wipeLocalDeviceData } from "@/lib/deleteAccount";
 import { APP_VERSION } from "@/lib/appVersion";
