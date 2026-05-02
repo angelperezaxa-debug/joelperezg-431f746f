@@ -45,6 +45,12 @@ export interface GameSettings {
   botHonesty: BotHonesty;
   /** Si està actiu, es reprodueixen veus i efectes de so durant la partida. */
   soundEnabled: boolean;
+  /** voiceURI seleccionada per l'usuari (null = automàtica). */
+  voiceURI: string | null;
+  /** Velocitat de la locució (0.7 .. 1.3). */
+  voiceRate: number;
+  /** To de la locució (0.5 .. 1.2). */
+  voicePitch: number;
 }
 
 export const DEFAULT_SETTINGS: GameSettings = {
@@ -56,6 +62,9 @@ export const DEFAULT_SETTINGS: GameSettings = {
   botDifficulty: "conservative",
   botHonesty: "sincero",
   soundEnabled: true,
+  voiceURI: null,
+  voiceRate: 1.05,
+  voicePitch: 0.85,
 };
 
 const KEY = "truc:settings:v1";
