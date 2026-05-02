@@ -298,6 +298,38 @@ function profileFor(what: string, baseText: string): SpeechProfile {
 /**
  * Locuta el text donat amb molt d'ímpetu, com una exclamació.
  */
+/**
+ * Adapta paraules catalanes/valencianes a una grafia que un TTS castellà
+ * pronuncia de forma propera al so original. Substitucions cas-insensitives
+ * però preservant la capitalització de la primera lletra.
+ */
+const PHONETIC_MAP: Array<[RegExp, string]> = [
+  [/\bvull\b/gi, "vull"],          // ya sona bé en es-ES (v→b, ll→y)
+  [/\bno vull\b/gi, "no vull"],
+  [/\benvit\b/gi, "envit"],
+  [/\brenvit\b/gi, "rrenvit"],
+  [/\bfalta envit\b/gi, "falta envit"],
+  [/\btruc\b/gi, "truc"],
+  [/\bretruc\b/gi, "rretruc"],
+  [/\bquatre val\b/gi, "cuatre val"],
+  [/\bjoc fora\b/gi, "yoc fora"],
+  [/\btinc\b/gi, "tinc"],
+  [/\bsí\b/gi, "sí"],
+  [/\bvine a mi\b/gi, "bine a mi"],
+  [/\bvine a vore\b/gi, "bine a vore"],
+];
+
+function catalanToSpanishPhonetic(text: string): string {
+  let out = text;
+  for (const [re, rep] of PHONETIC_MAP) {
+    out = out.replace(re, rep);
+  }
+  return out;
+}
+
+/**
+ * Locuta el text donat amb molt d'ímpetu, com una exclamació.
+ */
 export function speak(text: string) {
   enqueue({ text, rate: 1.1, pitch: 0.85, volume: 1.0 });
 }
