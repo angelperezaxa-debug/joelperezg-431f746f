@@ -74,6 +74,26 @@ const VALENCIAN_HINTS = ["valencia", "valencià", "valenciana", "balear", "mallo
 
 let cachedVoice: SpeechSynthesisVoice | null = null;
 
+// Preferències de l'usuari (es sobreescriuen des de gameSettings).
+let userVoiceURI: string | null = null;
+let userRateMul = 1.0;   // multiplicador sobre la rate del perfil
+let userPitchMul = 1.0;  // multiplicador sobre el pitch del perfil
+
+export function setVoicePreferences(p: { voiceURI: string | null; rate: number; pitch: number }) {
+  userVoiceURI = p.voiceURI ?? null;
+  userRateMul = p.rate / 1.05;   // 1.05 = rate base de referència
+  userPitchMul = p.pitch / 0.85; // 0.85 = pitch base de referència
+  cachedVoice = null;
+}
+
+/** Llista totes les veus disponibles (filtrades per qualitat ca/es). */
+export async function listVoices(): Promise<SpeechSynthesisVoice[]> {
+  const all = await ensureVoicesReady();
+  return all
+    .filter((v) => /^ca|^es/i.test(v.lang))
+    .sort((a, b) => scoreVoice(b, getPreferredLang()) - scoreVoice(a, getPreferredLang()));
+}
+
 function getPreferredLang(): "ca" | "es" {
   if (typeof window === "undefined") return "ca";
   try {
