@@ -1,0 +1,354 @@
+/**
+ * Locucions per a accions de cant (truc, envit, etc.) usant la
+ * Web Speech API del navegador. No requereix backend ni claus.
+ *
+ * Estratègia de millora:
+ *  - Triem la millor veu disponible: prioritzem veus "neural / natural /
+ *    premium / online / enhanced" modernes (Microsoft Natural, Google,
+ *    Apple enhanced) que sonen molt més humanes que les compactes.
+ *  - Preferim veus masculines amb timbre ferm.
+ *  - Apliquem prosòdia per tipus de cant (truc/envit/vull...) ajustant
+ *    rate, pitch i pauses perquè soni com una crida real, no monòtona.
+ *  - Reintents quan la llista de veus encara no ha carregat (Chrome
+ *    sovint l'omple de forma asíncrona).
+ */
+
+// Estat global de mute per a totes les locucions
+let isMuted = false;
+
+export function getMuted(): boolean {
+  return isMuted;
+}
+
+export function setMuted(muted: boolean): void {
+  isMuted = muted;
+  if (muted && typeof window !== "undefined" && "speechSynthesis" in window) {
+    window.speechSynthesis.cancel();
+  }
+}
+
+export function toggleMuted(): boolean {
+  setMuted(!isMuted);
+  return isMuted;
+}
+
+const SHOUT_TEXT: Record<string, string> = {
+  truc: "Truc!",
+  retruc: "Retruc!",
+  quatre: "Quatre val!",
+  "joc-fora": "Joc fora!",
+  envit: "Envit!",
+  renvit: "Renvit!",
+  "falta-envit": "Falta envit!",
+  vull: "Vull!",
+  "no-vull": "No vull!",
+};
+
+// Pistes per detectar veus masculines (els navegadors no exposen el gènere
+// directament, però el nom de la veu sol indicar-ho).
+const MALE_HINTS = [
+  "male", "hombre", "masculin",
+  // ES
+  "diego", "jorge", "carlos", "pablo", "enrique", "miguel", "juan",
+  "alvaro", "álvaro", "dario", "darío", "gonzalo",
+  // CA
+  "pau", "jordi", "arnau", "marc", "roger", "david", "daniel", "enric",
+  // Microsoft Neural / Apple
+  "thomas", "alvaro", "elias", "tomas", "tomás",
+];
+const FEMALE_HINTS = [
+  "female", "mujer", "femen",
+  "monica", "mónica", "paulina", "marisol", "esperanza", "laura",
+  "helena", "nuria", "núria", "montserrat", "sara", "elvira", "lucia",
+  "lucía", "ximena", "abril", "dalia", "renata",
+];
+
+// Pistes de qualitat: noms que solen indicar veus de "nova generació".
+const HIGH_QUALITY_HINTS = [
+  "neural", "natural", "online", "premium", "enhanced",
+  "microsoft", "google", "siri", "wavenet",
+];
+
+let cachedVoice: SpeechSynthesisVoice | null = null;
+
+function getPreferredLang(): "ca" | "es" {
+  if (typeof window === "undefined") return "ca";
+  try {
+    const raw = window.localStorage.getItem("truc:settings:v1");
+    if (!raw) return "ca";
+    const parsed = JSON.parse(raw) as { language?: string };
+    return parsed.language === "es" ? "es" : "ca";
+  } catch {
+    return "ca";
+  }
+}
+
+function scoreVoice(v: SpeechSynthesisVoice, preferred: "ca" | "es"): number {
+  const name = v.name.toLowerCase();
+  let score = 0;
+
+  // Idioma
+  if (preferred === "ca") {
+    if (/^ca/i.test(v.lang)) score += 120;
+    else if (/^es/i.test(v.lang)) score += 70;
+  } else {
+    if (/^es/i.test(v.lang)) score += 120;
+    else if (/^ca/i.test(v.lang)) score += 70;
+  }
+
+  // Qualitat (neural, natural, online, premium, enhanced...)
+  for (const h of HIGH_QUALITY_HINTS) {
+    if (name.includes(h)) score += 25;
+  }
+  // Bonus extra si combina varis senyals d'alta qualitat
+  if (name.includes("neural") || name.includes("natural")) score += 25;
+
+  // Gènere masculí preferit
+  if (MALE_HINTS.some((h) => name.includes(h))) score += 45;
+  if (FEMALE_HINTS.some((h) => name.includes(h))) score -= 35;
+
+  // Penalitza veus "compactes" velles d'Apple
+  if (name.includes("compact")) score -= 30;
+
+  // Default del sistema sol ser de qualitat raonable
+  if (v.default) score += 5;
+
+  return score;
+}
+
+function pickVoice(): SpeechSynthesisVoice | null {
+  if (typeof window === "undefined" || !("speechSynthesis" in window)) return null;
+  if (cachedVoice) return cachedVoice;
+  const voices = window.speechSynthesis.getVoices();
+  if (!voices.length) return null;
+  const preferred = getPreferredLang();
+  const sorted = [...voices].sort((a, b) => scoreVoice(b, preferred) - scoreVoice(a, preferred));
+  cachedVoice = sorted[0] ?? null;
+  return cachedVoice;
+}
+
+/** Invalida la veu cachejada perquè es torni a triar segons l'idioma. */
+export function resetVoiceCache() {
+  cachedVoice = null;
+  voicesReady = null;
+}
+
+/**
+ * Promesa que es resol quan la llista de veus està disponible.
+ * Chrome la carrega de forma asíncrona (`onvoiceschanged`); Safari/Firefox
+ * la solen tenir síncronament. Polling com a xarxa de seguretat per si
+ * `onvoiceschanged` no es dispara mai.
+ */
+let voicesReady: Promise<SpeechSynthesisVoice[]> | null = null;
+
+function ensureVoicesReady(): Promise<SpeechSynthesisVoice[]> {
+  if (voicesReady) return voicesReady;
+  if (typeof window === "undefined" || !("speechSynthesis" in window)) {
+    voicesReady = Promise.resolve([]);
+    return voicesReady;
+  }
+  const synth = window.speechSynthesis;
+  voicesReady = new Promise((resolve) => {
+    const initial = synth.getVoices();
+    if (initial && initial.length) {
+      resolve(initial);
+      return;
+    }
+    let settled = false;
+    const finish = (list: SpeechSynthesisVoice[]) => {
+      if (settled) return;
+      settled = true;
+      clearInterval(poll);
+      synth.removeEventListener?.("voiceschanged", onChange);
+      resolve(list);
+    };
+    const onChange = () => {
+      const list = synth.getVoices();
+      if (list && list.length) finish(list);
+    };
+    synth.addEventListener?.("voiceschanged", onChange);
+    // Polling de seguretat (alguns Chromium no disparen l'event fins a
+    // la primera locució). Cada 100ms durant 3 segons com a màxim.
+    let attempts = 0;
+    const poll = setInterval(() => {
+      attempts++;
+      const list = synth.getVoices();
+      if (list && list.length) finish(list);
+      else if (attempts >= 30) finish([]); // rendeix-te i deixa lang per defecte
+    }, 100);
+  });
+  return voicesReady;
+}
+
+/**
+ * Crida-la des d'un gest de l'usuari (clic a "Començar partida", "Mute"
+ * toggle, etc.) per "desbloquejar" el TTS i forçar la càrrega de veus.
+ * En navegadors mòbils, fer una primera locució buida durant un gest
+ * d'usuari permet que les locucions posteriors siguin immediates.
+ */
+export function primeSpeech(): void {
+  if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+  const synth = window.speechSynthesis;
+  // Força la inicialització del motor TTS amb una utterance silenciosa.
+  try {
+    const warm = new SpeechSynthesisUtterance(" ");
+    warm.volume = 0;
+    warm.rate = 1;
+    synth.cancel();
+    synth.speak(warm);
+  } catch { /* noop */ }
+  // Inicia (o reutilitza) la promesa de veus i precachea la triada.
+  void ensureVoicesReady().then(() => {
+    cachedVoice = null;
+    pickVoice();
+  });
+}
+
+if (typeof window !== "undefined" && "speechSynthesis" in window) {
+  window.speechSynthesis.onvoiceschanged = () => {
+    cachedVoice = null;
+    pickVoice();
+  };
+  // Inicia la càrrega asíncrona des del primer moment.
+  void ensureVoicesReady().then(() => pickVoice());
+}
+
+/**
+ * Prosòdia específica segons el tipus de cant. Retorna paràmetres de la
+ * Web Speech API i una versió textual amb pauses/èmfasi per controlar
+ * el ritme. La majoria de motors TTS respecten els signes de
+ * puntuació per fer pauses curtes (",") i mitjanes ("."), i el "!"
+ * dona entonació exclamativa.
+ */
+interface SpeechProfile {
+  text: string;
+  rate: number;
+  pitch: number;
+  volume: number;
+}
+
+function profileFor(what: string, baseText: string): SpeechProfile {
+  const clean = baseText.replace(/!+$/g, "").trim();
+  // Defaults: exclamació enèrgica
+  let rate = 1.05;
+  let pitch = 0.85;
+  let text = `¡${clean}!`;
+
+  switch (what) {
+    case "truc":
+      // Curt, sec, contundent
+      rate = 1.05; pitch = 0.75;
+      text = `¡${clean}!`;
+      break;
+    case "retruc":
+      // Una mica més agut i ràpid, com pujant l'aposta
+      rate = 1.1; pitch = 0.9;
+      text = `¡${clean}!`;
+      break;
+    case "quatre":
+      // Triomfal, més greu i marcat
+      rate = 0.95; pitch = 0.7;
+      text = `¡${clean}!`;
+      break;
+    case "joc-fora":
+      // Solemne, lent
+      rate = 0.9; pitch = 0.7;
+      text = `¡${clean}!`;
+      break;
+    case "envit":
+      // Provocador, una mica pujat
+      rate = 1.1; pitch = 0.9;
+      text = `¡${clean}!`;
+      break;
+    case "renvit":
+      // Encara més pujat i ràpid
+      rate = 1.15; pitch = 0.95;
+      text = `¡${clean}!`;
+      break;
+    case "falta-envit":
+      // L'aposta màxima: dues parts amb pausa breu
+      rate = 1.0; pitch = 0.85;
+      text = `¡Falta, envit!`;
+      break;
+    case "vull":
+      // Acceptació decidida, curta i greu
+      rate = 1.0; pitch = 0.7;
+      text = `¡${clean}!`;
+      break;
+    case "no-vull":
+      // Rebuig clar, marcant la negació
+      rate = 1.0; pitch = 0.75;
+      text = `¡No, vull!`.replace("No, vull", "No vull");
+      // Petita pausa entre "No" i "vull"
+      text = `¡No... vull!`;
+      break;
+    default:
+      break;
+  }
+
+  return { text, rate, pitch, volume: 1.0 };
+}
+
+/**
+ * Locuta el text donat amb molt d'ímpetu, com una exclamació.
+ */
+export function speak(text: string) {
+  speakWithProfile({ text, rate: 1.1, pitch: 0.85, volume: 1.0 });
+}
+
+function speakWithProfile(p: SpeechProfile) {
+  try {
+    if (isMuted) return;
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+    const synth = window.speechSynthesis;
+    const utter = new SpeechSynthesisUtterance(p.text);
+    utter.rate = p.rate;
+    utter.pitch = p.pitch;
+    utter.volume = p.volume;
+
+    const voice = pickVoice();
+    if (voice) {
+      // Camí ràpid: veus ja carregades (cas habitual gràcies a la
+      // precàrrega d'`ensureVoicesReady`). Locució immediata.
+      utter.voice = voice;
+      utter.lang = voice.lang;
+      synth.cancel();
+      synth.speak(utter);
+      return;
+    }
+
+    // Fallback: encara no estan disponibles. Esperem la promesa de
+    // veus (que també fa polling) en lloc d'un setTimeout fix.
+    void ensureVoicesReady().then(() => {
+      if (isMuted) return;
+      cachedVoice = null;
+      const v = pickVoice();
+      if (v) {
+        utter.voice = v;
+        utter.lang = v.lang;
+      } else {
+        utter.lang = "ca-ES";
+      }
+      synth.cancel();
+      synth.speak(utter);
+    });
+  } catch {
+    // Ignora errors de plataformes sense suport.
+  }
+}
+
+/**
+ * Locuta el cant (shout) corresponent. Accepta un `labelOverride`
+ * (per exemple "Truc i passe!") perquè es digui exactament el text
+ * que apareix en pantalla.
+ */
+export function speakShout(what: string, labelOverride?: string) {
+  const text = labelOverride ?? SHOUT_TEXT[what];
+  if (!text) return;
+  const profile = profileFor(what, text);
+  // Si hi ha labelOverride, manté el text personalitzat però amb la prosòdia del tipus.
+  if (labelOverride) {
+    profile.text = `¡${labelOverride.replace(/!+$/g, "").trim()}!`;
+  }
+  speakWithProfile(profile);
+}
