@@ -915,6 +915,51 @@ export function useTrucMatch(options: UseTrucMatchOptions = {}) {
     ) {
       consultStartedRef.current.add(waitKey);
 
+      // Short-circuit: si el company JA ha dit "Envida!" / "Tira la falta!"
+      // / "Sí" / "No" / "Tinc {n}" abans que el peu-bot arribara al seu
+      // torn (per exemple, l'humà ho ha dit espontàniament), no esperem
+      // res: actuem immediatament amb aquesta resposta com a instrucció.
+      // Així evitem que el bot es quede esperant una resposta a una
+      // pregunta que el company ja havia contestat.
+      {
+        const partnerEarly = partnerForSecondWait;
+        const earlySpoken = chatSignalsRef.current[partnerEarly] ?? [];
+        const earlyInstructions: ChatPhraseId[] = ["envida", "tira-falta", "si", "no", "si-tinc-n"];
+        const earlyHit = [...earlySpoken].reverse().find((p) => earlyInstructions.includes(p));
+        if (earlyHit) {
+          const canEnvitEarly = legalActions(match, botPlayer).some(
+            (a) => a.type === "shout" && a.what === "envit",
+          );
+          const myEnvitEarly = playerTotalEnvit(r, botPlayer);
+          let action: Action | null = null;
+          if (earlyHit === "envida" || earlyHit === "tira-falta") {
+            const what: ShoutKind = earlyHit === "tira-falta" ? "falta-envit" : "envit";
+            const acts = legalActions(match, botPlayer);
+            action = acts.find((a) => a.type === "shout" && a.what === what)
+              ?? acts.find((a) => a.type === "shout" && a.what === "envit")
+              ?? null;
+          } else if (canEnvitEarly && (earlyHit === "si" || earlyHit === "si-tinc-n")) {
+            action = { type: "shout", what: "envit" };
+          } else if (canEnvitEarly && earlyHit === "no") {
+            if (myEnvitEarly >= 30 && Math.random() < 0.4) {
+              action = { type: "shout", what: "envit" };
+            }
+          }
+          if (!action) {
+            const hints = buildHints();
+            action = botDecide(match, botPlayer, cachedAdvice, hints, tuningRef.current, bluffRateRef.current);
+          }
+          if (action) {
+            timerRef.current = window.setTimeout(() => {
+              if (action) dispatch(botPlayer, action);
+            }, BOT_DELAY_MS) as unknown as number;
+          }
+          return () => {
+            if (timerRef.current) window.clearTimeout(timerRef.current);
+          };
+        }
+      }
+
       // Si el propi bot ja té envit (≥31), envida directament: no cal
       // preguntar al company ni esperar instruccions. Amb envit alt
       // (30) també, però amb una mica d'aleatorietat per a no ser
