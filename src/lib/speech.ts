@@ -45,20 +45,22 @@ const SHOUT_TEXT: Record<string, string> = {
 // Pistes per detectar veus masculines (els navegadors no exposen el gènere
 // directament, però el nom de la veu sol indicar-ho).
 const MALE_HINTS = [
-  "male", "hombre", "masculin",
+  "male", "hombre", "masculin", "masculí",
   // ES
   "diego", "jorge", "carlos", "pablo", "enrique", "miguel", "juan",
   "alvaro", "álvaro", "dario", "darío", "gonzalo",
-  // CA
+  // CA / VAL
   "pau", "jordi", "arnau", "marc", "roger", "david", "daniel", "enric",
+  "vicent", "ferran", "joan", "guillem", "oriol", "biel", "pere",
   // Microsoft Neural / Apple
-  "thomas", "alvaro", "elias", "tomas", "tomás",
+  "thomas", "elias", "tomas", "tomás",
 ];
 const FEMALE_HINTS = [
-  "female", "mujer", "femen",
+  "female", "mujer", "femen", "femení",
   "monica", "mónica", "paulina", "marisol", "esperanza", "laura",
   "helena", "nuria", "núria", "montserrat", "sara", "elvira", "lucia",
   "lucía", "ximena", "abril", "dalia", "renata",
+  "alba", "joana", "empar", "mar",
 ];
 
 // Pistes de qualitat: noms que solen indicar veus de "nova generació".
@@ -66,6 +68,9 @@ const HIGH_QUALITY_HINTS = [
   "neural", "natural", "online", "premium", "enhanced",
   "microsoft", "google", "siri", "wavenet",
 ];
+
+// Pistes valencianes/baleàriques per donar més puntuació quan l'idioma és català.
+const VALENCIAN_HINTS = ["valencia", "valencià", "valenciana", "balear", "mallorqu"];
 
 let cachedVoice: SpeechSynthesisVoice | null = null;
 
