@@ -384,4 +384,77 @@ function Chip({
     </button>
   );
 }
+function VoiceSection({
+  voiceURI,
+  rate,
+  pitch,
+  onChange,
+}: {
+  voiceURI: string | null;
+  rate: number;
+  pitch: number;
+  onChange: (patch: { voiceURI?: string | null; voiceRate?: number; voicePitch?: number }) => void;
+}) {
+  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
+  useState(() => {
+    import("@/lib/speech").then((m) => m.listVoices().then(setVoices)).catch(() => {});
+    return undefined;
+  });
+
+  const preview = () => {
+    import("@/lib/speech").then((m) => {
+      m.cancelSpeech?.();
+      m.speakShout("truc");
+      window.setTimeout(() => m.speakShout("envit"), 700);
+      window.setTimeout(() => m.speakShout("vull"), 1500);
+    }).catch(() => {});
+  };
+
+  return (
+    <Section title="Veu de la locució">
+      <label className="block text-[11px] text-muted-foreground mb-1">Veu</label>
+      <select
+        value={voiceURI ?? ""}
+        onChange={(e) => onChange({ voiceURI: e.target.value || null })}
+        className="w-full rounded-md border border-primary/30 bg-background/50 px-2 py-1.5 text-xs"
+      >
+        <option value="">Automàtica (millor masculina disponible)</option>
+        {voices.map((v) => (
+          <option key={v.voiceURI} value={v.voiceURI}>
+            {v.name} — {v.lang}
+          </option>
+        ))}
+      </select>
+
+      <label className="block text-[11px] text-muted-foreground mt-3 mb-1">
+        Velocitat: {rate.toFixed(2)}×
+      </label>
+      <input
+        type="range" min={0.7} max={1.3} step={0.05}
+        value={rate}
+        onChange={(e) => onChange({ voiceRate: Number(e.target.value) })}
+        className="w-full"
+      />
+
+      <label className="block text-[11px] text-muted-foreground mt-3 mb-1">
+        To: {pitch.toFixed(2)}
+      </label>
+      <input
+        type="range" min={0.5} max={1.2} step={0.05}
+        value={pitch}
+        onChange={(e) => onChange({ voicePitch: Number(e.target.value) })}
+        className="w-full"
+      />
+
+      <Button type="button" size="sm" variant="outline" className="mt-3" onClick={preview}>
+        Provar veu
+      </Button>
+      <p className="text-[10px] text-muted-foreground mt-1">
+        Si no apareix cap veu catalana, instal·la una veu del sistema (iOS/macOS/Windows)
+        o tria una castellana masculina; el text s'adapta fonèticament.
+      </p>
+    </Section>
+  );
+}
+
 export default AjustesPage;
