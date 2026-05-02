@@ -396,6 +396,14 @@ function VoiceSection({
   onChange: (patch: { voiceURI?: string | null; voiceRate?: number; voicePitch?: number }) => void;
 }) {
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
+  const [activeLabel, setActiveLabel] = useState<string>("—");
+  const refreshActive = () => {
+    import("@/lib/speech")
+      .then((m) => m.getActiveVoice())
+      .then((v) => setActiveLabel(v ? `${v.name} — ${v.lang}` : "(cap veu disponible)"))
+      .catch(() => {});
+  };
+  useEffect(() => { refreshActive(); }, [voiceURI, rate, pitch]);
   useEffect(() => {
     let cancelled = false;
     const refresh = () => {
