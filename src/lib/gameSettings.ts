@@ -140,8 +140,11 @@ export function useGameSettings() {
   useEffect(() => {
     const loaded = loadSettings();
     setSettings(loaded);
-    // Aplica l'estat de so global a l'arrencar.
-    import("./speech").then((m) => m.setMuted?.(!loaded.soundEnabled)).catch(() => {});
+    // Aplica l'estat de so global i preferències de veu en arrencar.
+    import("./speech").then((m) => {
+      m.setMuted?.(!loaded.soundEnabled);
+      m.setVoicePreferences?.({ voiceURI: loaded.voiceURI, rate: loaded.voiceRate, pitch: loaded.voicePitch });
+    }).catch(() => {});
     setReady(true);
   }, []);
 
