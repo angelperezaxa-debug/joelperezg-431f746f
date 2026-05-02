@@ -164,8 +164,6 @@ export function ChatBubble({
 
   if (!phrase) return null;
 
-  if (!phrase) return null;
-
   const positionClass = {
     bottom:        "bottom-full left-1/2 -translate-x-1/2 mb-3 rounded-bl-sm",
     top:           "top-full left-1/2 -translate-x-1/2 mt-3 rounded-tl-sm",
