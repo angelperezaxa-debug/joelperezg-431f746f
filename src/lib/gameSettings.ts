@@ -45,6 +45,12 @@ export interface GameSettings {
   botHonesty: BotHonesty;
   /** Si està actiu, es reprodueixen veus i efectes de so durant la partida. */
   soundEnabled: boolean;
+  /** voiceURI seleccionada per l'usuari (null = automàtica). */
+  voiceURI: string | null;
+  /** Velocitat de la locució (0.7 .. 1.3). */
+  voiceRate: number;
+  /** To de la locució (0.5 .. 1.2). */
+  voicePitch: number;
 }
 
 export const DEFAULT_SETTINGS: GameSettings = {
@@ -56,6 +62,9 @@ export const DEFAULT_SETTINGS: GameSettings = {
   botDifficulty: "conservative",
   botHonesty: "sincero",
   soundEnabled: true,
+  voiceURI: null,
+  voiceRate: 1.05,
+  voicePitch: 0.85,
 };
 
 const KEY = "truc:settings:v1";
@@ -87,6 +96,9 @@ export function loadSettings(): GameSettings {
       botDifficulty: isDifficulty(parsed.botDifficulty) ? parsed.botDifficulty : DEFAULT_SETTINGS.botDifficulty,
       botHonesty: isHonesty(parsed.botHonesty) ? parsed.botHonesty : DEFAULT_SETTINGS.botHonesty,
       soundEnabled: typeof parsed.soundEnabled === "boolean" ? parsed.soundEnabled : DEFAULT_SETTINGS.soundEnabled,
+      voiceURI: typeof parsed.voiceURI === "string" ? parsed.voiceURI : DEFAULT_SETTINGS.voiceURI,
+      voiceRate: typeof parsed.voiceRate === "number" && parsed.voiceRate >= 0.7 && parsed.voiceRate <= 1.3 ? parsed.voiceRate : DEFAULT_SETTINGS.voiceRate,
+      voicePitch: typeof parsed.voicePitch === "number" && parsed.voicePitch >= 0.5 && parsed.voicePitch <= 1.2 ? parsed.voicePitch : DEFAULT_SETTINGS.voicePitch,
     };
   } catch {
     return DEFAULT_SETTINGS;
@@ -102,6 +114,7 @@ export function saveSettings(s: GameSettings) {
     import("./speech").then((m) => {
       m.resetVoiceCache?.();
       m.setMuted?.(!s.soundEnabled);
+      m.setVoicePreferences?.({ voiceURI: s.voiceURI, rate: s.voiceRate, pitch: s.voicePitch });
     }).catch(() => {});
     // Notifica el canvi d'idioma a la capa i18n perquè totes les vistes
     // es re-renderitzen amb el text traduït.
@@ -127,8 +140,11 @@ export function useGameSettings() {
   useEffect(() => {
     const loaded = loadSettings();
     setSettings(loaded);
-    // Aplica l'estat de so global a l'arrencar.
-    import("./speech").then((m) => m.setMuted?.(!loaded.soundEnabled)).catch(() => {});
+    // Aplica l'estat de so global i preferències de veu en arrencar.
+    import("./speech").then((m) => {
+      m.setMuted?.(!loaded.soundEnabled);
+      m.setVoicePreferences?.({ voiceURI: loaded.voiceURI, rate: loaded.voiceRate, pitch: loaded.voicePitch });
+    }).catch(() => {});
     setReady(true);
   }, []);
 

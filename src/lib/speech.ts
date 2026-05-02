@@ -74,6 +74,28 @@ const VALENCIAN_HINTS = ["valencia", "valencià", "valenciana", "balear", "mallo
 
 let cachedVoice: SpeechSynthesisVoice | null = null;
 
+// Preferències de l'usuari (es sobreescriuen des de gameSettings).
+let userVoiceURI: string | null = null;
+let userRateMul = 1.0;   // multiplicador sobre la rate del perfil
+let userPitchMul = 1.0;  // multiplicador sobre el pitch del perfil
+
+export function setVoicePreferences(p: { voiceURI: string | null; rate: number; pitch: number }) {
+  userVoiceURI = p.voiceURI ?? null;
+  userRateMul = p.rate / 1.05;
+  userPitchMul = p.pitch / 0.85;
+  cachedVoice = null;
+}
+
+const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
+
+/** Llista totes les veus disponibles (filtrades per qualitat ca/es). */
+export async function listVoices(): Promise<SpeechSynthesisVoice[]> {
+  const all = await ensureVoicesReady();
+  return all
+    .filter((v) => /^ca|^es/i.test(v.lang))
+    .sort((a, b) => scoreVoice(b, getPreferredLang()) - scoreVoice(a, getPreferredLang()));
+}
+
 function getPreferredLang(): "ca" | "es" {
   if (typeof window === "undefined") return "ca";
   try {
@@ -127,6 +149,14 @@ function pickVoice(): SpeechSynthesisVoice | null {
   if (cachedVoice) return cachedVoice;
   const voices = window.speechSynthesis.getVoices();
   if (!voices.length) return null;
+  // Si l'usuari ha triat una veu específica, respecta-la sempre que existeixi.
+  if (userVoiceURI) {
+    const chosen = voices.find((v) => v.voiceURI === userVoiceURI);
+    if (chosen) {
+      cachedVoice = chosen;
+      return cachedVoice;
+    }
+  }
   const preferred = getPreferredLang();
   const sorted = [...voices].sort((a, b) => scoreVoice(b, preferred) - scoreVoice(a, preferred));
   cachedVoice = sorted[0] ?? null;
@@ -363,8 +393,8 @@ function speakNow(p: SpeechProfile): Promise<void> {
       if (typeof window === "undefined" || !("speechSynthesis" in window)) { resolve(); return; }
       const synth = window.speechSynthesis;
       const utter = new SpeechSynthesisUtterance(p.text);
-      utter.rate = p.rate;
-      utter.pitch = p.pitch;
+      utter.rate = clamp(p.rate * userRateMul, 0.5, 1.6);
+      utter.pitch = clamp(p.pitch * userPitchMul, 0.3, 1.5);
       utter.volume = p.volume;
       utter.onend = () => resolve();
       utter.onerror = () => resolve();
