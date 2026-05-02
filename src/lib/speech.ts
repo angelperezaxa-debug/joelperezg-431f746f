@@ -45,20 +45,22 @@ const SHOUT_TEXT: Record<string, string> = {
 // Pistes per detectar veus masculines (els navegadors no exposen el gènere
 // directament, però el nom de la veu sol indicar-ho).
 const MALE_HINTS = [
-  "male", "hombre", "masculin",
+  "male", "hombre", "masculin", "masculí",
   // ES
   "diego", "jorge", "carlos", "pablo", "enrique", "miguel", "juan",
   "alvaro", "álvaro", "dario", "darío", "gonzalo",
-  // CA
+  // CA / VAL
   "pau", "jordi", "arnau", "marc", "roger", "david", "daniel", "enric",
+  "vicent", "ferran", "joan", "guillem", "oriol", "biel", "pere",
   // Microsoft Neural / Apple
-  "thomas", "alvaro", "elias", "tomas", "tomás",
+  "thomas", "elias", "tomas", "tomás",
 ];
 const FEMALE_HINTS = [
-  "female", "mujer", "femen",
+  "female", "mujer", "femen", "femení",
   "monica", "mónica", "paulina", "marisol", "esperanza", "laura",
   "helena", "nuria", "núria", "montserrat", "sara", "elvira", "lucia",
   "lucía", "ximena", "abril", "dalia", "renata",
+  "alba", "joana", "empar", "mar",
 ];
 
 // Pistes de qualitat: noms que solen indicar veus de "nova generació".
@@ -66,6 +68,9 @@ const HIGH_QUALITY_HINTS = [
   "neural", "natural", "online", "premium", "enhanced",
   "microsoft", "google", "siri", "wavenet",
 ];
+
+// Pistes valencianes/baleàriques per donar més puntuació quan l'idioma és català.
+const VALENCIAN_HINTS = ["valencia", "valencià", "valenciana", "balear", "mallorqu"];
 
 let cachedVoice: SpeechSynthesisVoice | null = null;
 
@@ -101,9 +106,12 @@ function scoreVoice(v: SpeechSynthesisVoice, preferred: "ca" | "es"): number {
   // Bonus extra si combina varis senyals d'alta qualitat
   if (name.includes("neural") || name.includes("natural")) score += 25;
 
-  // Gènere masculí preferit
-  if (MALE_HINTS.some((h) => name.includes(h))) score += 45;
-  if (FEMALE_HINTS.some((h) => name.includes(h))) score -= 35;
+  // Gènere masculí preferit (molt prioritari)
+  if (MALE_HINTS.some((h) => name.includes(h))) score += 80;
+  if (FEMALE_HINTS.some((h) => name.includes(h))) score -= 80;
+
+  // Bonus per veus valencianes/baleàriques quan l'idioma preferit és català
+  if (preferred === "ca" && VALENCIAN_HINTS.some((h) => name.includes(h))) score += 30;
 
   // Penalitza veus "compactes" velles d'Apple
   if (name.includes("compact")) score -= 30;
@@ -290,6 +298,38 @@ function profileFor(what: string, baseText: string): SpeechProfile {
 /**
  * Locuta el text donat amb molt d'ímpetu, com una exclamació.
  */
+/**
+ * Adapta paraules catalanes/valencianes a una grafia que un TTS castellà
+ * pronuncia de forma propera al so original. Substitucions cas-insensitives
+ * però preservant la capitalització de la primera lletra.
+ */
+const PHONETIC_MAP: Array<[RegExp, string]> = [
+  [/\bvull\b/gi, "vull"],          // ya sona bé en es-ES (v→b, ll→y)
+  [/\bno vull\b/gi, "no vull"],
+  [/\benvit\b/gi, "envit"],
+  [/\brenvit\b/gi, "rrenvit"],
+  [/\bfalta envit\b/gi, "falta envit"],
+  [/\btruc\b/gi, "truc"],
+  [/\bretruc\b/gi, "rretruc"],
+  [/\bquatre val\b/gi, "cuatre val"],
+  [/\bjoc fora\b/gi, "yoc fora"],
+  [/\btinc\b/gi, "tinc"],
+  [/\bsí\b/gi, "sí"],
+  [/\bvine a mi\b/gi, "bine a mi"],
+  [/\bvine a vore\b/gi, "bine a vore"],
+];
+
+function catalanToSpanishPhonetic(text: string): string {
+  let out = text;
+  for (const [re, rep] of PHONETIC_MAP) {
+    out = out.replace(re, rep);
+  }
+  return out;
+}
+
+/**
+ * Locuta el text donat amb molt d'ímpetu, com una exclamació.
+ */
 export function speak(text: string) {
   enqueue({ text, rate: 1.1, pitch: 0.85, volume: 1.0 });
 }
@@ -333,6 +373,12 @@ function speakNow(p: SpeechProfile): Promise<void> {
         if (v) {
           utter.voice = v;
           utter.lang = v.lang;
+          // Si la veu triada no és catalana (cap instal·lada al sistema),
+          // adaptem el text fonèticament a una pronúncia castellana propera
+          // perquè soni natural enlloc de lletrejar paraules catalanes.
+          if (!/^ca/i.test(v.lang)) {
+            utter.text = catalanToSpanishPhonetic(p.text);
+          }
         } else {
           utter.lang = "ca-ES";
         }
