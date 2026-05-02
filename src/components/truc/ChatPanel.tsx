@@ -162,12 +162,7 @@ export function ChatBubble({
   const t = useT();
   const phrase = PHRASES.find((p) => p.id === phraseId);
 
-  useEffect(() => {
-    if (!phrase) return;
-    const text = phraseText(phraseId, vars);
-    if (text) speak(text);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phraseId, JSON.stringify(vars ?? {})]);
+  if (!phrase) return null;
 
   if (!phrase) return null;
 
