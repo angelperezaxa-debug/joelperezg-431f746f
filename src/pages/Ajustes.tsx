@@ -396,6 +396,14 @@ function VoiceSection({
   onChange: (patch: { voiceURI?: string | null; voiceRate?: number; voicePitch?: number }) => void;
 }) {
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
+  const [activeLabel, setActiveLabel] = useState<string>("—");
+  const refreshActive = () => {
+    import("@/lib/speech")
+      .then((m) => m.getActiveVoice())
+      .then((v) => setActiveLabel(v ? `${v.name} — ${v.lang}` : "(cap veu disponible)"))
+      .catch(() => {});
+  };
+  useEffect(() => { refreshActive(); }, [voiceURI, rate, pitch]);
   useEffect(() => {
     let cancelled = false;
     const refresh = () => {
@@ -404,7 +412,7 @@ function VoiceSection({
           m.resetVoiceCache?.();
           return m.listVoices();
         })
-        .then((list) => { if (!cancelled) setVoices(list); })
+        .then((list) => { if (!cancelled) { setVoices(list); refreshActive(); } })
         .catch(() => {});
     };
     refresh();
@@ -452,6 +460,9 @@ function VoiceSection({
           </option>
         ))}
       </select>
+      <p className="text-[10px] text-muted-foreground mt-1">
+        Veu en ús: <span className="text-foreground/90 font-medium">{activeLabel}</span>
+      </p>
 
       <label className="block text-[11px] text-muted-foreground mt-3 mb-1">
         Velocitat: {rate.toFixed(2)}×
