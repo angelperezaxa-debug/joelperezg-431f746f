@@ -147,6 +147,14 @@ function pickVoice(): SpeechSynthesisVoice | null {
   if (cachedVoice) return cachedVoice;
   const voices = window.speechSynthesis.getVoices();
   if (!voices.length) return null;
+  // Si l'usuari ha triat una veu específica, respecta-la sempre que existeixi.
+  if (userVoiceURI) {
+    const chosen = voices.find((v) => v.voiceURI === userVoiceURI);
+    if (chosen) {
+      cachedVoice = chosen;
+      return cachedVoice;
+    }
+  }
   const preferred = getPreferredLang();
   const sorted = [...voices].sort((a, b) => scoreVoice(b, preferred) - scoreVoice(a, preferred));
   cachedVoice = sorted[0] ?? null;
