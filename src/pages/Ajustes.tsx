@@ -460,6 +460,9 @@ function VoiceSection({
           </option>
         ))}
       </select>
+      <p className="text-[10px] text-muted-foreground mt-1">
+        Veu en ús: <span className="text-foreground/90 font-medium">{activeLabel}</span>
+      </p>
 
       <label className="block text-[11px] text-muted-foreground mt-3 mb-1">
         Velocitat: {rate.toFixed(2)}×
