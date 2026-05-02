@@ -22,9 +22,7 @@ export function getMuted(): boolean {
 
 export function setMuted(muted: boolean): void {
   isMuted = muted;
-  if (muted && typeof window !== "undefined" && "speechSynthesis" in window) {
-    window.speechSynthesis.cancel();
-  }
+  if (muted) cancelSpeech();
 }
 
 export function toggleMuted(): boolean {
