@@ -81,10 +81,12 @@ let userPitchMul = 1.0;  // multiplicador sobre el pitch del perfil
 
 export function setVoicePreferences(p: { voiceURI: string | null; rate: number; pitch: number }) {
   userVoiceURI = p.voiceURI ?? null;
-  userRateMul = p.rate / 1.05;   // 1.05 = rate base de referència
-  userPitchMul = p.pitch / 0.85; // 0.85 = pitch base de referència
+  userRateMul = p.rate / 1.05;
+  userPitchMul = p.pitch / 0.85;
   cachedVoice = null;
 }
+
+const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 
 /** Llista totes les veus disponibles (filtrades per qualitat ca/es). */
 export async function listVoices(): Promise<SpeechSynthesisVoice[]> {
