@@ -191,17 +191,17 @@ export function AccountLinkSection() {
           </p>
         </div>
       </div>
-      <Link to="/auth" className="w-full">
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="w-full border-primary/40 text-primary hover:bg-primary/10"
-        >
-          <Mail className="w-3.5 h-3.5 mr-1.5" />
-          Vincular correu electrònic
-        </Button>
-      </Link>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        disabled
+        aria-disabled="true"
+        className="w-full border-primary/40 text-primary hover:bg-primary/10 opacity-60 cursor-not-allowed"
+      >
+        <Mail className="w-3.5 h-3.5 mr-1.5" />
+        Vincular correu electrònic (pròximament)
+      </Button>
     </div>
   );
 }
