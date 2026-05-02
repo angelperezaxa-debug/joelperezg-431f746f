@@ -106,9 +106,12 @@ function scoreVoice(v: SpeechSynthesisVoice, preferred: "ca" | "es"): number {
   // Bonus extra si combina varis senyals d'alta qualitat
   if (name.includes("neural") || name.includes("natural")) score += 25;
 
-  // Gènere masculí preferit
-  if (MALE_HINTS.some((h) => name.includes(h))) score += 45;
-  if (FEMALE_HINTS.some((h) => name.includes(h))) score -= 35;
+  // Gènere masculí preferit (molt prioritari)
+  if (MALE_HINTS.some((h) => name.includes(h))) score += 80;
+  if (FEMALE_HINTS.some((h) => name.includes(h))) score -= 80;
+
+  // Bonus per veus valencianes/baleàriques quan l'idioma preferit és català
+  if (preferred === "ca" && VALENCIAN_HINTS.some((h) => name.includes(h))) score += 30;
 
   // Penalitza veus "compactes" velles d'Apple
   if (name.includes("compact")) score -= 30;
