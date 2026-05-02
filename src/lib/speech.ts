@@ -96,6 +96,12 @@ export async function listVoices(): Promise<SpeechSynthesisVoice[]> {
     .sort((a, b) => scoreVoice(b, getPreferredLang()) - scoreVoice(a, getPreferredLang()));
 }
 
+/** Retorna la veu que s'usaria ara mateix (respectant userVoiceURI) o null. */
+export async function getActiveVoice(): Promise<SpeechSynthesisVoice | null> {
+  await ensureVoicesReady();
+  return pickVoice();
+}
+
 function getPreferredLang(): "ca" | "es" {
   if (typeof window === "undefined") return "ca";
   try {
