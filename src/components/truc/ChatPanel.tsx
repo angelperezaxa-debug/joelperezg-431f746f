@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ChatPhraseId, PHRASES_BY_CATEGORY, PHRASES, ChatPhrase, phraseText } from "@/game/phrases";
 import { cn } from "@/lib/utils";
 import { useT } from "@/i18n/useT";
 import { HelpCircle, MessageSquare, Megaphone, X, LucideIcon } from "lucide-react";
 import { TRUC_Z_INDEX } from "@/components/truc/layers";
+import { speak } from "@/lib/speech";
 
 interface ChatPanelProps {
   onSay: (phraseId: ChatPhraseId) => void;
