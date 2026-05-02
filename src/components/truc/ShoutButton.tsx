@@ -73,6 +73,10 @@ interface ShoutBubbleProps {
 }
 
 export function ShoutBubble({ what, className, labelOverride, tailDirection, style }: ShoutBubbleProps) {
+  useEffect(() => {
+    speakShout(what, labelOverride);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [what, labelOverride]);
   return (
     <div
       className={cn(
