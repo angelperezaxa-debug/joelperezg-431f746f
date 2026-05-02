@@ -341,6 +341,12 @@ function speakNow(p: SpeechProfile): Promise<void> {
         if (v) {
           utter.voice = v;
           utter.lang = v.lang;
+          // Si la veu triada no és catalana (cap instal·lada al sistema),
+          // adaptem el text fonèticament a una pronúncia castellana propera
+          // perquè soni natural enlloc de lletrejar paraules catalanes.
+          if (!/^ca/i.test(v.lang)) {
+            utter.text = catalanToSpanishPhonetic(p.text);
+          }
         } else {
           utter.lang = "ca-ES";
         }
