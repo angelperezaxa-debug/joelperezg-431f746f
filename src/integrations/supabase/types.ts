@@ -56,6 +56,48 @@ export type Database = {
         }
         Relationships: []
       }
+      account_links: {
+        Row: {
+          created_at: string
+          device_id: string | null
+          email: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          device_id?: string | null
+          email: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          device_id?: string | null
+          email?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      admin_passwords: {
+        Row: {
+          created_at: string
+          id: string
+          password_hash: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          password_hash: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          password_hash?: string
+        }
+        Relationships: []
+      }
       chat_flag_audit: {
         Row: {
           created_at: string
