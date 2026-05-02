@@ -96,6 +96,9 @@ export function loadSettings(): GameSettings {
       botDifficulty: isDifficulty(parsed.botDifficulty) ? parsed.botDifficulty : DEFAULT_SETTINGS.botDifficulty,
       botHonesty: isHonesty(parsed.botHonesty) ? parsed.botHonesty : DEFAULT_SETTINGS.botHonesty,
       soundEnabled: typeof parsed.soundEnabled === "boolean" ? parsed.soundEnabled : DEFAULT_SETTINGS.soundEnabled,
+      voiceURI: typeof parsed.voiceURI === "string" ? parsed.voiceURI : DEFAULT_SETTINGS.voiceURI,
+      voiceRate: typeof parsed.voiceRate === "number" && parsed.voiceRate >= 0.7 && parsed.voiceRate <= 1.3 ? parsed.voiceRate : DEFAULT_SETTINGS.voiceRate,
+      voicePitch: typeof parsed.voicePitch === "number" && parsed.voicePitch >= 0.5 && parsed.voicePitch <= 1.2 ? parsed.voicePitch : DEFAULT_SETTINGS.voicePitch,
     };
   } catch {
     return DEFAULT_SETTINGS;
