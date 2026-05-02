@@ -642,6 +642,8 @@ function maybeFinishRound(m: MatchState) {
 
   // Regla 4: 1a i 2a pardes → es juga la 3a; guanya qui la guanye.
   // Si la 3a també queda parda (totes 3 pardes), guanya l'equip de la mà.
+  // Regla 5: si la 3a baza queda parda i hi ha 1-1 a les dues primeres,
+  // guanya l'equip que va guanyar la 1a baza (NO la mà).
   if (!trucWinner && playedTricks.length === 3) {
     if (pardaAt[0] && pardaAt[1]) {
       if (!pardaAt[2] && playedTricks[2]!.winner !== undefined) {
@@ -651,7 +653,14 @@ function maybeFinishRound(m: MatchState) {
       }
     } else if (wins.nos > wins.ells) trucWinner = "nos";
     else if (wins.ells > wins.nos) trucWinner = "ells";
-    else trucWinner = teamOf(r.mano);
+    else if (pardaAt[2] && !pardaAt[0] && playedTricks[0]!.winner !== undefined) {
+      // 1-1 amb 3a parda: guanya qui va guanyar la 1a baza.
+      trucWinner = teamOf(playedTricks[0]!.winner!);
+    } else if (pardaAt[2] && pardaAt[0] && !pardaAt[1] && playedTricks[1]!.winner !== undefined) {
+      // (Defensa) 1a parda, 2a amb winner i 3a parda — ja resolta per regla 2,
+      // però per coherència: guanya qui va guanyar la 2a.
+      trucWinner = teamOf(playedTricks[1]!.winner!);
+    } else trucWinner = teamOf(r.mano);
   }
 
   if (trucWinner) finishRound(m, trucWinner);
