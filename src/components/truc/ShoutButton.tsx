@@ -1,6 +1,8 @@
+import { useEffect } from "react";
 import { ShoutKind } from "@/game/types";
 import { cn } from "@/lib/utils";
 import { TRUC_Z_INDEX } from "@/components/truc/layers";
+import { speakShout } from "@/lib/speech";
 
 const LABEL: Record<ShoutKind, string> = {
   envit: "Envit!",
@@ -71,6 +73,10 @@ interface ShoutBubbleProps {
 }
 
 export function ShoutBubble({ what, className, labelOverride, tailDirection, style }: ShoutBubbleProps) {
+  useEffect(() => {
+    speakShout(what, labelOverride);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [what, labelOverride]);
   return (
     <div
       className={cn(
