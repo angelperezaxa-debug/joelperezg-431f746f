@@ -160,6 +160,13 @@ function Ajustes() {
           <p className="text-[10px] text-muted-foreground mt-1">{t("settings.sound.hint")}</p>
         </Section>
 
+        <VoiceSection
+          voiceURI={settings.voiceURI}
+          rate={settings.voiceRate}
+          pitch={settings.voicePitch}
+          onChange={(patch) => update(patch)}
+        />
+
         <Section title={t("settings.difficulty")}>
           <div className="grid grid-cols-3 gap-2">
             {difficultyOpts.map((o) => (
