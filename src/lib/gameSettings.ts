@@ -114,7 +114,7 @@ export function saveSettings(s: GameSettings) {
     import("./speech").then((m) => {
       m.resetVoiceCache?.();
       m.setMuted?.(!s.soundEnabled);
-      (m as { setVoicePreferences?: (p: { voiceURI: string | null; rate: number; pitch: number }) => void }).setVoicePreferences?.({ voiceURI: s.voiceURI, rate: s.voiceRate, pitch: s.voicePitch });
+      m.setVoicePreferences?.({ voiceURI: s.voiceURI, rate: s.voiceRate, pitch: s.voicePitch });
     }).catch(() => {});
     // Notifica el canvi d'idioma a la capa i18n perquè totes les vistes
     // es re-renderitzen amb el text traduït.
